@@ -1,0 +1,27 @@
+---
+title: "Human Activity Recognition Prediction"
+author: "Deb Martin"
+date: "April 27, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#Summary
+In this study, 6 participants performed exercises with accelerometers on their belts, forearms, arms, and dumbbells. They performed these exercises both correctly and incorrectly. This project will attempt to predict whether each exercise was done in the correct manner or not, and if incorrect, the manner in which it was incorrect. The classe variable indicates how the exercise was performed:
+
+* Class A: Exactly according to specification (correct)
+* Class B: Throwing the elbows to the front (incorrect)
+* Class C: Lifting the dumbbell only halfway (incorrect)
+* Class D: Lowering the dumbbell only halfway (incorrect)
+* Class E: Throwing the hips to the front (incorrect)
+
+```{r}
+training <- read.csv(paste0(getwd(),'/pml-training.csv'), header = TRUE)
+testing <- read.csv(paste0(getwd(),'/pml-testing.csv'), header = TRUE)
+dim(training)
+```
+
+The training set consists of 19,622 observations of 160 variables. Column # 160 is the variable we are trying to predict: the classe variable.
