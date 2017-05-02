@@ -19,9 +19,72 @@ In this study, 6 participants performed exercises with accelerometers on their b
 * Class E: Throwing the hips to the front (incorrect)
 
 ```{r}
-training <- read.csv(paste0(getwd(),'/pml-training.csv'), header = TRUE)
-testing <- read.csv(paste0(getwd(),'/pml-testing.csv'), header = TRUE)
-dim(training)
+trainingdata <- read.csv(paste0(getwd(),'/pml-training.csv'), header = TRUE, na.strings = c('#DIV/0!', 'NA', ''))
+testingdata <- read.csv(paste0(getwd(),'/pml-testing.csv'), header = TRUE, na.strings = c('#DIV/0!', 'NA', ''))
+dim(trainingdata)
 ```
 
-The training set consists of 19,622 observations of 160 variables. Column # 160 is the variable we are trying to predict: the classe variable.
+The training set consists of 19,622 observations of 160 variables. Column # 160 is the variable we are trying to predict: the classe variable. We want to use cross validation, so we'll use the trainControl function to split our data into 10 folds for cross validation.
+
+```{r}
+library(caret); library(randomForest); library(rpart)
+set.seed(48374)
+train_control <- trainControl(method="cv", number=10)
+```
+
+Before modeling, there's some data cleanup that needs to be done. First, we need to deal with NA values. There are many NA values in our model. For columns that are made up of 50% or more NA values, we will throw them out.
+
+```{r}
+for (i in 1:ncol(trainingdata)) {
+	NAnum <- sum(is.na(trainingdata[i]))
+	if(i == 1) {
+		NAdf <- data.frame(colnum = i, noNAs = NAnum)
+	} else {
+		newrow <- c(i, NAnum)
+		NAdf <- rbind(NAdf, newrow)
+	}
+	
+}
+
+NAdf$pct <- NAdf$noNAs / nrow(trainingdata)
+nonNAcols <- NAdf[NAdf$pct < 0.5, ]$colnum
+trainingdata <- trainingdata[ , nonNAcols]
+```
+
+We also need to get rid of any variables that have near zero variance.
+
+```{r}
+NZVvalues <- nearZeroVar(trainingdata, saveMetrics = TRUE)
+NZVvalues <- row.names(NZVvalues[NZVvalues$nzv == TRUE, ])
+trainingdata <- trainingdata[ , -which(names(trainingdata) %in% c(NZVvalues))]
+```
+
+Next, we'll get rid of highly correlated variables.
+```{r}
+trainingcor <- findCorrelation(cor(trainingdata[ , 6:58]), cutoff = 0.8, exact = TRUE, names = TRUE)
+trainingdata <- trainingdata[ , !(colnames(trainingdata) %in% trainingcor)]
+```
+
+Finally, we'll want to remove the first five columns from the dataset, which are the row index, the usernames, and time information.
+
+```{r}
+trainingdata <- trainingdata[ , 6:ncol(trainingdata)]
+```
+
+Now we can move on to fitting some models. We'll try a few different models to see which appears to work the best. First, Random Forest.
+
+```{r}
+rf_mod <- randomForest(classe ~ ., data = trainingdata, trControl = train_control)
+rf_pred <- predict(rf_mod, trainingdata)
+rf_conf <- confusionMatrix(rf_pred, trainingdata$classe)
+rf_conf$overall[1]
+```
+Random Forest, along with the combination of 10 folds for cross validation, gives us a 100% accuracy rate in predicting the classe variable. Just for comparison, we'll try doing a decision tree model.
+
+```{r}
+rpart_mod <- train(classe ~ ., data = trainingdata, trControl = train_control, method = 'rpart')
+rpart_pred <- predict(rpart_mod, trainingdata)
+rpart_conf <- confusionMatrix(rpart_pred, trainingdata$classe)
+rpart_conf$overall[1]
+```
+The accuracy using decision trees went down to 50% -- much less reliable than the model built using the Random Forest method. We will move forward with Random Forest.
