@@ -1,7 +1,7 @@
 ---
 title: "Human Activity Recognition Prediction"
 author: "Deb Martin"
-date: "April 27, 2017"
+date: "May 3, 2017"
 output: html_document
 ---
 
