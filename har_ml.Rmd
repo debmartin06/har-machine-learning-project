@@ -18,6 +18,8 @@ In this study, 6 participants performed exercises with accelerometers on their b
 * Class D: Lowering the dumbbell only halfway (incorrect)
 * Class E: Throwing the hips to the front (incorrect)
 
+#Data Loading and Cleaning
+
 ```{r}
 trainingdata <- read.csv(paste0(getwd(),'/pml-training.csv'), header = TRUE, na.strings = c('#DIV/0!', 'NA', ''))
 testingdata <- read.csv(paste0(getwd(),'/pml-testing.csv'), header = TRUE, na.strings = c('#DIV/0!', 'NA', ''))
@@ -26,13 +28,13 @@ dim(trainingdata)
 
 The training set consists of 19,622 observations of 160 variables. Column # 160 is the variable we are trying to predict: the classe variable. We want to use cross validation, so we'll use the trainControl function to split our data into 10 folds for cross validation.
 
-```{r}
+```{r, message = FALSE, warning = FALSE}
 library(caret); library(randomForest); library(rpart)
 set.seed(48374)
 train_control <- trainControl(method="cv", number=10)
 ```
 
-Before modeling, there's some data cleanup that needs to be done. First, we need to deal with NA values. There are many NA values in our model. For columns that are made up of 50% or more NA values, we will throw them out.
+Before modeling, there's some data cleanup that needs to be done. First, we need to deal with NA values. There are many NA values in the data set. For columns that are made up of 50% or more NA values, we will throw them out.
 
 ```{r}
 for (i in 1:ncol(trainingdata)) {
@@ -71,6 +73,7 @@ Finally, we'll want to remove the first five columns from the dataset, which are
 trainingdata <- trainingdata[ , 6:ncol(trainingdata)]
 ```
 
+#Data Modeling
 Now we can move on to fitting some models. We'll try a few different models to see which appears to work the best. First, Random Forest.
 
 ```{r}
@@ -87,4 +90,18 @@ rpart_pred <- predict(rpart_mod, trainingdata)
 rpart_conf <- confusionMatrix(rpart_pred, trainingdata$classe)
 rpart_conf$overall[1]
 ```
-The accuracy using decision trees went down to 50% -- much less reliable than the model built using the Random Forest method. We will move forward with Random Forest.
+The accuracy using decision trees went down to 53% -- much less reliable than the model built using the Random Forest method. We will move forward with Random Forest.
+
+#Applying Model to Testing Data
+Before running these models on the testing data, we need to transform the testing data in the same way that we transformed the training data. We should be able to do this by reducing the variables in the testing set to just those that are in the training set.
+```{r}
+testingdata <- testingdata[ , colnames(testingdata) %in% colnames(trainingdata)]
+```
+
+Next, we'll apply our model to this data set to fill in the classe variable.
+
+```{r}
+testingdata$classe <- predict(rf_mod, testingdata)
+testingresults <- data.frame(classe = testingdata$classe)
+testingresults
+```
